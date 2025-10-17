@@ -1,4 +1,36 @@
 "use strict";
+function findMode(array) {
+  // This function starts by creating an object where the keys are each unique number of the array and the values are the amount of times that number appears in the array.
+
+  let object = {};
+
+  for (let i = 0; i < array.length; i++) {
+    if (object[array[i]]) {
+      // increment existing key's value
+      object[array[i]] += 1;
+    } else {
+      // make a new key and set its value to 1
+      object[array[i]] = 1;
+    };
+  };
+
+  // assign a value guaranteed to be smaller than any number in the array
+  let biggestValue = -1;
+  let biggestValuesKey = -1;
+
+  // finding the biggest value and its corresponding key
+  Object.keys(object).forEach(key => {
+    let value = object[key];
+    if (value > biggestValue) {
+      biggestValue = value;
+      biggestValuesKey = key;
+    };
+  });
+
+  return biggestValuesKey;
+
+};
+
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -40,7 +72,7 @@ exports.plugin = exports.details = void 0;
 var cliUtils_1 = require("../../../../FlowHelpers/1.0.0/cliUtils");
 /* eslint no-plusplus: ["error", { "allowForLoopAfterthoughts": true }] */
 var details = function () { return ({
-    name: 'Detect Cropbar',
+    name: 'Detecting Cropbar',
     description: 'Detect cropbar with ffmpeg and ad it to the -vf option',
     style: {
         borderColor: 'green',
@@ -101,13 +133,13 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                 //    outputNumber: 1,
                 //    variables: args.variables,
                 //  };
-                if (!args.inputFileObj.ffProbeData.streams) {
+/*                if (!args.inputFileObj.ffProbeData.streams) {
                     throw new Error('No streams found in file FFprobe data');
                 }
                 mainStream = args.inputFileObj.ffProbeData.streams.find(function (stream) { return stream.codec_type === basicSettingsType; });
                 if (!mainStream) {
                     throw new Error("No ".concat(basicSettingsType, " stream found in file FFprobe data"));
-                }
+                }*/
                 outputFilePath = "/dev/null";
                 cliArgs = [];
                 cliPath = '';
@@ -130,9 +162,7 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                     'fps=1/2,cropdetect',
                     '-f',
                     'null',
-                    '/dev/null',
                     '-',
-                    '2>&1',
                 ];
                 args.updateWorker({
                     CLIType: cliPath,
@@ -157,7 +187,10 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                     throw new Error("Running ".concat(cliTool, " failed"));
                 }
                 else {
-                    crops = res.errorLogFull.map(function (line) { return line.match(/[^crop=]+$/g); });
+                        const crops = res.errorLogFull
+                             .toString()
+                             .match(/crop=\S+/g)
+                             .map((crop) => crop.substring(5));
                     crop_w_mode = [];
                     crop_h_mode = [];
                     crop_x_mode = [];
@@ -169,13 +202,14 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                         crop_x_mode.push(parseInt(crop[2]));
                         crop_y_mode.push(parseInt(crop[3]));
                     }
-                    //    const wMode = mode(crop_w_mode);
-                    //    const hMode = findMode(crop_h_mode);
-                    //    const xMode = findMode(crop_x_mode);
-                    //    const yMode = findMode(crop_y_mode);
+                    args.jobLog(`testing output : ${crops}` );
+                        const wMode = findMode(crop_w_mode);
+                        const hMode = findMode(crop_h_mode);
+                        const xMode = findMode(crop_x_mode);
+                        const yMode = findMode(crop_y_mode);
                     // Return a dict of the crop values
-                    //    args.jobLog(`${wMode},${hMode},${xMode},${yMode}`);
-                    //    const cropping = {"wMode,hMode,xMode,yMode}; 
+                        args.jobLog(`${wMode},${hMode},${xMode},${yMode}`);
+//                        const cropping = {wMode','hMode','xMode','yMode};
                 }
                 ;
                 args.logOutcome('tSuc');
