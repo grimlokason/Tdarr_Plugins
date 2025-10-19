@@ -1,36 +1,4 @@
 "use strict";
-function findMode(array) {
-  // This function starts by creating an object where the keys are each unique number of the array and the values are the amount of times that number appears in the array.
-
-  let object = {};
-
-  for (let i = 0; i < array.length; i++) {
-    if (object[array[i]]) {
-      // increment existing key's value
-      object[array[i]] += 1;
-    } else {
-      // make a new key and set its value to 1
-      object[array[i]] = 1;
-    };
-  };
-
-  // assign a value guaranteed to be smaller than any number in the array
-  let biggestValue = -1;
-  let biggestValuesKey = -1;
-
-  // finding the biggest value and its corresponding key
-  Object.keys(object).forEach(key => {
-    let value = object[key];
-    if (value > biggestValue) {
-      biggestValue = value;
-      biggestValuesKey = key;
-    };
-  });
-
-  return biggestValuesKey;
-
-};
-
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -70,6 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.plugin = exports.details = void 0;
 var cliUtils_1 = require("../../../../FlowHelpers/1.0.0/cliUtils");
+var flowUtils_1 = require("../../../../FlowHelpers/1.0.0/interfaces/flowUtils");
 /* eslint no-plusplus: ["error", { "allowForLoopAfterthoughts": true }] */
 var details = function () { return ({
     name: 'Detecting Cropbar',
@@ -115,6 +84,40 @@ var details = function () { return ({
 exports.details = details;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function () {
+
+function findMode(array) {
+  // This function starts by creating an object where the keys are each unique number of the array and the values are the amount of times that number appears in the array.
+
+  let object = {};
+
+  for (let i = 0; i < array.length; i++) {
+    if (object[array[i]]) {
+      // increment existing key's value
+      object[array[i]] += 1;
+    } else {
+      // make a new key and set its value to 1
+      object[array[i]] = 1;
+    };
+  };
+
+  // assign a value guaranteed to be smaller than any number in the array
+  let biggestValue = -1;
+  let biggestValuesKey = -1;
+
+  // finding the biggest value and its corresponding key
+  Object.keys(object).forEach(key => {
+    let value = object[key];
+    if (value > biggestValue) {
+      biggestValue = value;
+      biggestValuesKey = key;
+    };
+  });
+
+  return biggestValuesKey;
+
+};
+
+
     var lib, basicSettingsType, container, cliTool, cliArguments, mainStream, outputFilePath, cliArgs, cliPath, argsSplit, cli, res, crops, crop_w_mode, crop_h_mode, crop_x_mode, crop_y_mode, c, crop;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -210,8 +213,18 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                     // Return a dict of the crop values
                         args.jobLog(`${wMode},${hMode},${xMode},${yMode}`);
 //                        const cropping = {wMode','hMode','xMode','yMode};
+
+                args.inputs = lib.loadDefaultValues(args.inputs, details);
+                (0, flowUtils_1.checkFfmpegCommandInit)(args);
+                args.variables.ffmpegCommand.streams.forEach(function (stream) {
+                if (stream.codec_type === 'video') {
+                     stream.outputArgs.push('-vf', `crop=${wMode}:${hMode}:${xMode}:${yMode}`);
+                }});
+
                 }
                 ;
+
+
                 args.logOutcome('tSuc');
                 return [2 /*return*/, {
                         outputFileObj: {
