@@ -1,4 +1,5 @@
 import { CLI } from '../../../../FlowHelpers/1.0.0/cliUtils';
+import { checkFfmpegCommandInit } from '../../../../FlowHelpers/1.0.0/interfaces/flowUtils';
 import {
   IpluginDetails,
   IpluginInputArgs,
@@ -51,6 +52,28 @@ const details = (): IpluginDetails => ({
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
+
+function findMode(array: number[]): number {
+  const counts: Record<number, number> = {};
+
+  for (const num of array) {
+    counts[num] = (counts[num] || 0) + 1;
+  }
+
+  let maxCount = -1;
+  let mode: number = array[0];
+
+  for (const key in counts) {
+    const count = counts[Number(key)];
+    if (count > maxCount) {
+      maxCount = count;
+      mode = Number(key);
+    }
+  }
+
+  return mode;
+}
+
   const lib = require('../../../../../methods/lib')();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-param-reassign
   args.inputs = lib.loadDefaultValues(args.inputs, details);
@@ -59,24 +82,6 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
   const container = String(args.inputs.outputFileContainer).split('.').join('');
   const cliTool = String(args.inputs.cliTool);
   const cliArguments = String(args.inputs.cliArguments);
-
-//  const noTranscodeResponse = {
-//    outputFileObj: {
-//      _id: args.inputFileObj._id,
-//    },
-//    outputNumber: 1,
-//    variables: args.variables,
-//  };
-
-  if (!args.inputFileObj.ffProbeData.streams) {
-    throw new Error('No streams found in file FFprobe data');
-  }
-
-  const mainStream = args.inputFileObj.ffProbeData.streams.find((stream) => stream.codec_type === basicSettingsType);
-
-  if (!mainStream) {
-    throw new Error(`No ${basicSettingsType} stream found in file FFprobe data`);
-  }
 
   const outputFilePath = `/dev/null`;
 
@@ -102,9 +107,7 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
     'fps=1/2,cropdetect',
     '-f',
     'null',
-    '/dev/null',
     '-',
-    '2>&1',
   ];
 
   args.updateWorker({
@@ -132,11 +135,8 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
   }
   else {
     // Extract crop values from output using regex
-    const crops  = res.errorLogFull.map(line => line.match(/[^crop=]+$/g));
-//res.errorLogFull
-//                   .toString()
-//                   .match(/[^crop=]+$/g);
-//                   .map(crop);
+    const crops: string[] = (res.errorLogFull.toString().match(/crop=\S+/g) || [])
+         .map((crop: string) => crop.substring(5));
 
     //Get the most commonly returned number and set that as the crop value
     //ffmpeg returns 4 values for cropdetect: width:height:x:y
@@ -145,22 +145,28 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
     var crop_x_mode = [];
     var crop_y_mode = [];
     for (var c = 0; c < (crops ?? []).length; c++) {
-//        const crop = crops[c].split(':');
         const crop = String(crops[c]).split(':');
         crop_w_mode.push(parseInt(crop[0]));
         crop_h_mode.push(parseInt(crop[1]));
         crop_x_mode.push(parseInt(crop[2]));
         crop_y_mode.push(parseInt(crop[3]));
     }
-//    const wMode = mode(crop_w_mode);
-//    const hMode = findMode(crop_h_mode);
-//    const xMode = findMode(crop_x_mode);
-//    const yMode = findMode(crop_y_mode);
+    const wMode = findMode(crop_w_mode);
+    const hMode = findMode(crop_h_mode);
+    const xMode = findMode(crop_x_mode);
+    const yMode = findMode(crop_y_mode);
 
     // Return a dict of the crop values
-//    args.jobLog(`${wMode},${hMode},${xMode},${yMode}`);
-//    const cropping = {"wMode,hMode,xMode,yMode}; 
+    args.jobLog(`${wMode},${hMode},${xMode},${yMode}`);
+    checkFfmpegCommandInit(args);
+
+    args.variables.ffmpegCommand.streams.forEach((stream) => {
+      if (stream.codec_type === 'video') {
+        stream.outputArgs.push('-vf', `crop=${wMode}:${hMode}:${xMode}:${yMode}`);
+    }});
   };
+
+
 
   args.logOutcome('tSuc');
 
